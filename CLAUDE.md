@@ -7,8 +7,8 @@ project-specific detail lives in `docs/PRD.md`, `docs/ARCHITECTURE.md`, and
 
 ## Project identity
 
-- **Name:** <fill in>
-- **One-liner:** <fill in>
+- **Name:** Coloring Book
+- **One-liner:** Turn any photo into a tap-to-fill coloring page, entirely client-side, for a 3-year-old on iPad/iPhone.
 - **Stack:** React + Vite, deployed on Vercel (default — override in ARCHITECTURE.md if this project differs)
 - **Integration branch:** `main` (default — set to `dev` for three-tier projects, see Git workflow)
 - **PRD:** `docs/PRD.md`

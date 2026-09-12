@@ -1,7 +1,9 @@
 // Vercel serverless function: proxies a photo to OpenAI's image-edit API to
-// redraw it as a flat-color cartoon, suitable input for our own line-art
-// extraction. The API key lives only here (server-side env var) — never in
-// the client bundle.
+// redraw it as a finished black-and-white coloring book page (monoline
+// strokes, pure white interiors, closed shapes). Our line-art pass then just
+// binarizes that, rather than re-deriving lines from a colored image.
+// The API key lives only here (server-side env var) — never in the client
+// bundle.
 //
 // Requires OPENAI_API_KEY set in Vercel project env vars (and .env.local for
 // local dev via `vercel dev`).
@@ -9,16 +11,23 @@
 const OPENAI_IMAGES_EDIT_URL = 'https://api.openai.com/v1/images/edits';
 
 const STYLE_PROMPT =
-  'Redraw this photo as a picture-book illustration for a toddler’s coloring ' +
-  'book, in the style of a simple children’s storybook page: a small number ' +
-  'of large, bold, simplified shapes with thick, uniform, clean outlines. ' +
-  'Merge any grass, leaves, fur, feathers, foliage, or other repeating ' +
-  'texture into a few big solid shapes instead of tracing each individual ' +
-  'blade, leaf, or strand — treat busy backgrounds the same way a children’s ' +
-  'book illustrator would: as one or two simple flat shapes, not photographic ' +
-  'detail. No shading, no gradients, no fine linework, no small or intricate ' +
-  'shapes anywhere in the image. Keep the same subject, pose, and overall ' +
-  'composition, simplified to its essential shapes only. No text or watermarks.';
+  'Redraw this photo as a finished black-and-white coloring book page for a ' +
+  'young child. Output line art only: pure white throughout with solid black ' +
+  'outlines — absolutely no color, no gray, no shading, no gradients, no ' +
+  'hatching, no stippling, no shadows, and no filled-in dark areas. ' +
+  'Draw every outline as a single clean monoline stroke of one consistent, ' +
+  'even, medium-bold weight, like a felt-tip marker. Every shape must be a ' +
+  'fully closed loop with no gaps or breaks anywhere in any line. ' +
+  'Simplify the subject into a small number of large, rounded, friendly ' +
+  'shapes with generous open white space inside them for a toddler to color. ' +
+  'Keep only the interior lines essential to recognizing the subject, and ' +
+  'draw any face with simple dot or oval eyes and a small simple mouth. ' +
+  'Merge grass, leaves, fur, feathers, foliage, patterns and any other ' +
+  'repeating texture into a few big simple shapes rather than drawing ' +
+  'individual blades, strands or details. Place the subject on a plain white ' +
+  'background with at most two or three simple background shapes. ' +
+  'Keep the same subject, pose and overall composition. ' +
+  'No text, no watermark, no signature, no border or frame.';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -47,7 +56,11 @@ export default async function handler(req, res) {
     form.append('image', new Blob([imageBuffer], { type: 'image/png' }), 'photo.png');
     form.append('prompt', STYLE_PROMPT);
     form.append('size', 'auto');
-    form.append('quality', 'low');
+    // 'medium' rather than 'low': wobbly or broken strokes at low quality
+    // mean unclosed contours, and unclosed contours leak flood fill across
+    // the whole image — the app's main failure mode. Still inside the
+    // approved ~$0.02-0.07/image budget (see docs/DECISIONS.md).
+    form.append('quality', 'medium');
     form.append('n', '1');
 
     const openaiRes = await fetch(OPENAI_IMAGES_EDIT_URL, {

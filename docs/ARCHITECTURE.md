@@ -7,8 +7,9 @@
 - **Styling:** plain CSS / inline styles — app is small enough not to need a system
 - **State management:** useState/useReducer, no external state library
 - **External APIs:** OpenAI `gpt-image-1` (image-edit endpoint), called server-side only
-  from `api/stylize.js` — cartoonizes the photo before line-art extraction. Cost:
-  ~$0.02-0.07/image (low quality tier). Requires `OPENAI_API_KEY` set as a Vercel
+  from `api/stylize.js` — redraws the photo as a black-and-white coloring book page
+  before line-art extraction. Cost: ~$0.04/image (medium quality tier, inside the
+  approved ~$0.02-0.07 envelope). Requires `OPENAI_API_KEY` set as a Vercel
   env var (and in a local `.env.local`, gitignored — see `.env.local.example`).
   See DECISIONS.md for why this superseded the original 100%-client-side design.
 - **Data/persistence:** none — no localStorage, no database. Nothing survives a Start Over.
@@ -32,10 +33,12 @@ No persisted entities. In-memory only, per session:
   resolution — canvases render at the fixed processing size and are scaled
   up via CSS for display, independent of devicePixelRatio. Keeps memory
   bounded (~10MB worst case) regardless of screen density. — 2026-09-12
-- Photo is stylized to a flat-color cartoon via OpenAI `gpt-image-1` (server-side,
-  `api/stylize.js`) before our own line-art pipeline runs on it. If the stylize
-  call fails for any reason, the app falls back to running line-art extraction
-  on the raw photo rather than blocking — see DECISIONS.md. — 2026-09-12
+- Photo is redrawn as black-and-white coloring-book line art via OpenAI
+  `gpt-image-1` (server-side, `api/stylize.js`) before our own line-art pipeline
+  runs on it, so that pipeline is a near-lossless binarization rather than
+  re-deriving lines from a colored image. If the stylize call fails for any
+  reason, the app falls back to running line-art extraction on the raw photo
+  rather than blocking — see DECISIONS.md. — 2026-09-12
 - DoG chosen over adaptive threshold as the default edge detector (see
   DECISIONS.md) but both are implemented behind a `method` switch in
   `lineArt.js` for ongoing comparison. — 2026-09-12
@@ -71,16 +74,16 @@ No persisted entities. In-memory only, per session:
 
 ```
 api/
-  stylize.js               # Vercel serverless function: photo -> OpenAI gpt-image-1 -> cartoon PNG
+  stylize.js               # Vercel serverless function: photo -> OpenAI gpt-image-1 -> line-art PNG
 src/
   main.jsx
   App.jsx
   screens/
-    StartScreen.jsx       # Phase 1: photo input + cartoon stylization
+    StartScreen.jsx       # Phase 1: photo input + coloring-page stylization
     LineArtScreen.jsx     # Phase 1: line art display + DoG/adaptive debug toggle
   lib/
     imageLoad.js           # file -> downscaled ImageData
-    stylize.js              # client -> /api/stylize -> decoded cartoon ImageData
+    stylize.js              # client -> /api/stylize -> decoded line-art ImageData
     lineArt.js              # grayscale -> smoothing -> edges -> morphology -> speckle removal
   styles/
     index.css

@@ -22,13 +22,17 @@ cycle to a new color) → tap through the whole page.
 ## Scope — this version
 
 1. Photo input (camera or library) + client-side downscale to 1024px longest edge.
-2. Cartoon stylization: the downscaled photo is sent to a Vercel serverless
-   function (`api/stylize.js`), which calls OpenAI's `gpt-image-1` image-edit
-   endpoint to redraw it as a flat-color cartoon. Falls back to the raw photo
+2. Coloring-page stylization: the downscaled photo is sent to a Vercel
+   serverless function (`api/stylize.js`), which calls OpenAI's `gpt-image-1`
+   image-edit endpoint to redraw it as a finished black-and-white coloring
+   book page — monoline strokes of one even weight, pure white interiors,
+   fully closed shapes, minimal interior detail. Falls back to the raw photo
    if this fails for any reason (no fail state).
-3. Line-art conversion: grayscale → noise smoothing → edge detection (DoG,
-   compared against adaptive threshold) → morphological closing → speckle
-   removal → boolean line mask. Runs on the cartoon image, not the raw photo.
+3. Line-art conversion: grayscale → noise smoothing → line detection
+   (darkness threshold by default; DoG/adaptive edge detection retained for
+   the raw-photo fallback path and comparison) → morphological closing →
+   speckle removal → boolean line mask. Runs on the stylized line art, not
+   the raw photo.
 4. Region precomputation: connected-component labeling of non-line pixels,
    average cartoon-image color per region boosted to a bright crayon color,
    small regions merged into their largest neighbor.

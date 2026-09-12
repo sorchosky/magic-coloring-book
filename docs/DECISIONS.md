@@ -7,6 +7,45 @@
 
 ---
 
+### 2026-09-12 — Ask OpenAI for finished line art, not a flat-color cartoon
+
+**Context:** you supplied four coloring-page design references (kawaii picnic
+scene, ice cream cone, party-items page, sun/bird/flower landscape). All four
+are *pure black-and-white line art* — monoline strokes, white interiors, no
+color anywhere — not stylized colored images.
+
+**Decision:** the stylize prompt now asks for a finished black-and-white
+coloring book page directly (monoline strokes of one even weight, pure white
+interiors, fully closed shapes, minimal interior detail, plain white
+background, simple dot eyes on faces) instead of a flat-color cartoon we then
+re-derive lines from. Bumped `quality` from `low` to `medium` in the same
+change, since wobbly/broken strokes at low quality mean unclosed contours,
+and unclosed contours leak flood fill — still within the approved
+~$0.02-0.07/image envelope.
+
+Shared attributes extracted from the references and encoded in the prompt:
+monoline single-weight strokes; no color/gray/shading/hatching; every shape a
+closed loop; rounded chunky geometry with generous open space; only essential
+interior lines; plain white background with at most a couple of simple
+background shapes.
+
+**Alternatives considered:** keeping the flat-color-cartoon step and tuning
+our own extraction harder — rejected because it's strictly more lossy: asking
+the model for colored output and then re-deriving lines risks our threshold
+catching dark *fill* colors (a navy shirt, a black dog) as line pixels, while
+asking for line art directly makes our pass a near-lossless binarization of
+exactly the strokes the model intended.
+
+**Consequence to handle in Phase 2:** with the stylized output now
+black-and-white, the original downscaled photo is the only remaining source
+of color for per-region crayon colors (as the PRD specifies). `StartScreen`
+currently discards it after stylizing — Phase 2 needs to pass it through
+alongside the line art.
+
+**Reversible?** Yes — prompt-only change plus one quality parameter.
+
+---
+
 ### 2026-09-12 — Darkness threshold replaces DoG as default line-extraction method
 
 **Context:** after the cartoon stylization step landed, real-device testing

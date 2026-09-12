@@ -5,13 +5,13 @@
 // morphological closing (seals gaps so flood fill can't leak) -> speckle
 // removal -> boolean line mask.
 //
-// Darkness threshold is the default because input is now a cartoon-stylized
-// image (see lib/stylize.js) with solid drawn outlines — thresholding marks
-// the whole stroke as line pixels. DoG/adaptive are edge detectors: they find
-// the two boundaries of a stroke, not its solid interior, which produces a
-// hollow double-line "tube" outline on cartoon input. Keep DoG/adaptive
-// around for the raw-photo fallback path (stylize call failed) and for
-// comparison — tune all three against real photos and their cartoon versions.
+// Darkness threshold is the default because input is now already
+// black-and-white coloring-book line art (see lib/stylize.js), so this pass
+// is essentially a binarization that marks each drawn stroke solid.
+// DoG/adaptive are edge detectors: they find the two boundaries of a stroke,
+// not its solid interior, which produces a hollow double-line "tube" outline
+// on drawn input. Keep DoG/adaptive around for the raw-photo fallback path
+// (stylize call failed) and for comparison.
 export const LINE_ART_PARAMS = {
   // Median filter radius (in px) applied to grayscale before edge detection.
   // This is the #1 defense against photo noise / skin texture producing

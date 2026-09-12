@@ -1,6 +1,6 @@
 // Sends the downscaled photo to /api/stylize (a Vercel serverless function
-// backed by OpenAI's image-edit API) and decodes the returned cartoon image
-// back into ImageData for the line-art pipeline.
+// backed by OpenAI's image-edit API) and decodes the returned black-and-white
+// coloring-book-style line art back into ImageData for the line-art pipeline.
 //
 // Callers should fall back to the original photo's ImageData if this throws
 // — a network hiccup or missing API key shouldn't block the coloring flow.

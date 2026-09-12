@@ -7,6 +7,45 @@
 
 ---
 
+### 2026-09-12 — Add OpenAI cartoon stylization step (supersedes "100% client-side, no network calls")
+
+**Context:** Phase 1 line art from raw photos looked too photorealistic —
+edge detection on a real photo traces skin/fur/fabric texture and photo
+lighting, not clean cartoon-style outlines. You asked for an image
+generator to convert photos to a cartoon style before line-art extraction.
+
+**Decision:** Add a Vercel serverless function (`api/stylize.js`) that calls
+OpenAI's `gpt-image-1` image-edit endpoint to redraw the downscaled photo as
+a flat-color cartoon; our existing DoG/adaptive pipeline then runs on that
+cartoon image instead of the raw photo. This supersedes the original
+"no backend, no API keys, no network calls at runtime, 100% client-side"
+constraint from the initial spec — that constraint no longer holds for this
+one step. If the stylize call fails (missing key, network, quota), the app
+falls back to running line-art extraction on the raw photo rather than
+blocking, preserving the "no fail state" toddler UX rule.
+
+**Alternatives considered:**
+- Client-side posterization/color quantization only (no API) — free and
+  fully offline, but wouldn't address the deeper issue: DoG still traces
+  real photo edges (wrinkles, fabric folds, background clutter), not
+  cartoon-simplified shapes. Rejected as the first thing tried per your
+  direction to go straight to the image-generation approach.
+- Having the API generate the finished line art directly (skip our own edge
+  detection) — rejected in favor of stylize-then-extract, which reuses and
+  keeps testable the DoG/morphology/speckle-removal pipeline already
+  validated in Phase 1, and gives more control over line closure/gap-sealing
+  than trusting a generated image to have clean closed outlines already.
+- Providers other than OpenAI (Gemini 2.5 Flash Image, Replicate-hosted
+  models) — cheaper (Replicate) or comparable (Gemini) options exist;
+  OpenAI `gpt-image-1` chosen for prompt-following reliability on a specific
+  style brief and simpler single-provider billing.
+
+**Reversible?** Yes, but not free to reverse — removing it returns to the
+photorealistic line-art problem this was meant to fix. Swapping providers
+only touches `api/stylize.js`.
+
+---
+
 ### 2026-09-12 — DoG over adaptive threshold for edge detection
 
 **Context:** spec asked for a recommendation between Difference of Gaussians

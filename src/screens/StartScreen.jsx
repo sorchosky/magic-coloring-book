@@ -34,15 +34,18 @@ export default function StartScreen({ onPhotoReady }) {
 
       setStage('stylizing');
       let cartoonImageData = imageData;
+      let stylizeError = null;
       try {
         cartoonImageData = await stylizeToCartoon(imageData);
       } catch (err) {
         // No API key configured, offline, quota hit, etc. — fall back to
-        // the raw photo rather than blocking the coloring flow.
+        // the raw photo rather than blocking the coloring flow, but surface
+        // it so a silent fallback isn't mistaken for a working cartoon step.
+        stylizeError = err instanceof Error ? err.message : String(err);
         console.warn('Cartoon stylize failed, using original photo:', err);
       }
 
-      onPhotoReady(cartoonImageData);
+      onPhotoReady(cartoonImageData, stylizeError);
     } finally {
       setBusy(false);
       setStage(null);

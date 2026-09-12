@@ -11,7 +11,7 @@ const toggleButtonStyle = (active) => ({
   color: active ? '#fff' : '#2b2b2b',
 });
 
-export default function LineArtScreen({ imageData, onStartOver }) {
+export default function LineArtScreen({ imageData, stylizeError, onStartOver }) {
   const canvasRef = useRef(null);
   const [method, setMethod] = useState('dog');
   const [processing, setProcessing] = useState(true);
@@ -70,6 +70,23 @@ export default function LineArtScreen({ imageData, onStartOver }) {
         />
         {processing && (
           <div style={{ position: 'absolute', fontSize: '1.2rem' }}>Converting…</div>
+        )}
+        {!processing && stylizeError && (
+          <div
+            style={{
+              position: 'absolute',
+              bottom: 12,
+              left: 12,
+              right: 12,
+              background: '#2b2b2bcc',
+              color: '#fff',
+              borderRadius: 12,
+              padding: '10px 14px',
+              fontSize: '0.85rem',
+            }}
+          >
+            Cartoon step failed, using original photo: {stylizeError}
+          </div>
         )}
       </div>
 

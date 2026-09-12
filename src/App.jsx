@@ -4,14 +4,23 @@ import LineArtScreen from './screens/LineArtScreen.jsx';
 
 export default function App() {
   const [photoImageData, setPhotoImageData] = useState(null);
+  const [stylizeError, setStylizeError] = useState(null);
 
   function reset() {
     setPhotoImageData(null);
+    setStylizeError(null);
+  }
+
+  function handlePhotoReady(imageData, error) {
+    setPhotoImageData(imageData);
+    setStylizeError(error);
   }
 
   if (!photoImageData) {
-    return <StartScreen onPhotoReady={setPhotoImageData} />;
+    return <StartScreen onPhotoReady={handlePhotoReady} />;
   }
 
-  return <LineArtScreen imageData={photoImageData} onStartOver={reset} />;
+  return (
+    <LineArtScreen imageData={photoImageData} stylizeError={stylizeError} onStartOver={reset} />
+  );
 }

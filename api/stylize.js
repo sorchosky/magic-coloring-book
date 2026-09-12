@@ -22,6 +22,7 @@ export default async function handler(req, res) {
 
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
+    console.error('stylize: OPENAI_API_KEY is not set for this environment.');
     res.status(500).json({ error: 'Server is missing OPENAI_API_KEY.' });
     return;
   }
@@ -51,6 +52,7 @@ export default async function handler(req, res) {
 
     if (!openaiRes.ok) {
       const errText = await openaiRes.text();
+      console.error(`stylize: OpenAI request failed (${openaiRes.status}): ${errText}`);
       res.status(502).json({ error: `OpenAI request failed: ${errText}` });
       return;
     }
@@ -58,12 +60,14 @@ export default async function handler(req, res) {
     const data = await openaiRes.json();
     const resultBase64 = data?.data?.[0]?.b64_json;
     if (!resultBase64) {
+      console.error('stylize: OpenAI response missing b64_json:', JSON.stringify(data));
       res.status(502).json({ error: 'OpenAI response did not include image data.' });
       return;
     }
 
     res.status(200).json({ imageBase64: resultBase64 });
   } catch (err) {
+    console.error('stylize: unhandled error', err);
     res.status(500).json({ error: err instanceof Error ? err.message : 'Unknown server error.' });
   }
 }

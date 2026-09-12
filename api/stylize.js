@@ -9,10 +9,16 @@
 const OPENAI_IMAGES_EDIT_URL = 'https://api.openai.com/v1/images/edits';
 
 const STYLE_PROMPT =
-  'Redraw this photo as a simple, flat-color cartoon illustration suitable ' +
-  'as the basis for a children’s coloring book: bold clean shapes, smooth ' +
-  'flat areas of color, minimal fine texture or detail, clear simple outlines. ' +
-  'Keep the same subject, pose, and composition. No text or watermarks.';
+  'Redraw this photo as a picture-book illustration for a toddler’s coloring ' +
+  'book, in the style of a simple children’s storybook page: a small number ' +
+  'of large, bold, simplified shapes with thick, uniform, clean outlines. ' +
+  'Merge any grass, leaves, fur, feathers, foliage, or other repeating ' +
+  'texture into a few big solid shapes instead of tracing each individual ' +
+  'blade, leaf, or strand — treat busy backgrounds the same way a children’s ' +
+  'book illustrator would: as one or two simple flat shapes, not photographic ' +
+  'detail. No shading, no gradients, no fine linework, no small or intricate ' +
+  'shapes anywhere in the image. Keep the same subject, pose, and overall ' +
+  'composition, simplified to its essential shapes only. No text or watermarks.';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {

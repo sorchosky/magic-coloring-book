@@ -7,6 +7,32 @@
 
 ---
 
+### 2026-09-12 — Darkness threshold replaces DoG as default line-extraction method
+
+**Context:** after the cartoon stylization step landed, real-device testing
+showed DoG produced hollow "tube" outlines — two thin parallel lines with a
+white gap — instead of one solid mono line, on a dog photo test.
+
+**Decision:** added a third method to `lineArt.js`, `threshold` (darkness
+threshold on the smoothed grayscale image), and made it the default. DoG and
+adaptive threshold are edge detectors: they find the two intensity
+transitions at a stroke's boundaries, not its solid interior, so a thick
+drawn cartoon outline comes out hollow. Straight darkness thresholding marks
+the whole stroke as line pixels, matching what the cartoon image actually
+drew. `LineArtScreen` now defaults to `dog` only when the stylize call
+failed and we're working from a raw (non-cartoon) photo instead, since DoG's
+real edge detection is still the right tool for un-stylized photos.
+
+**Alternatives considered:** tuning DoG's dilate/erode radii to bridge the
+gap between the two edges — rejected as fragile; the gap width depends on
+the cartoon output's stroke thickness, which isn't controlled precisely by
+the OpenAI prompt and will vary photo to photo.
+
+**Reversible?** Yes — it's a third method alongside the existing two, not a
+replacement of any code.
+
+---
+
 ### 2026-09-12 — Add OpenAI cartoon stylization step (supersedes "100% client-side, no network calls")
 
 **Context:** Phase 1 line art from raw photos looked too photorealistic —

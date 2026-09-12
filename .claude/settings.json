@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install)",
+      "Bash(npm run *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push origin feature/*)",
+      "Bash(git push origin fix/*)",
+      "Bash(git push origin docs/*)",
+      "Bash(git checkout -b feature/*)",
+      "Bash(git checkout -b fix/*)",
+      "Bash(git checkout -b docs/*)",
+      "Bash(git worktree add *)"
+    ],
+    "deny": [
+      "Bash(git push origin main)",
+      "Bash(git push origin dev)",
+      "Bash(git push --force*)",
+      "Bash(git merge * main)",
+      "Bash(rm -rf *)",
+      "Bash(vercel --prod*)"
+    ]
+  }
+}

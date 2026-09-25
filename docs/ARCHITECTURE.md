@@ -3,11 +3,18 @@
 ## Stack
 
 - **Framework:** React + Vite (default, no deviation)
-- **Deploy:** Vercel, connected to `main`, static build only (no serverless functions)
+- **Deploy:** Vercel, connected to `main`, static build + one serverless function (`api/stylize.js`)
 - **Styling:** plain CSS / inline styles — app is small enough not to need a system
 - **State management:** useState/useReducer, no external state library
-- **External APIs:** none — all image processing is client-side JS on Canvas ImageData
-- **Data/persistence:** none — no localStorage, no backend. Nothing survives a Start Over.
+- **External APIs:** OpenAI `gpt-image-1` (image-edit endpoint), called server-side only
+  from `api/stylize.js` — redraws the photo as a black-and-white coloring book page
+  before line-art extraction. Cost: ~$0.04/image (medium quality tier, inside the
+  approved ~$0.02-0.07 envelope). Requires `OPENAI_API_KEY` set as a Vercel
+  env var (and in a local `.env.local`, gitignored — see `.env.local.example`).
+  See DECISIONS.md for why this superseded the original 100%-client-side design.
+- **Data/persistence:** none — no localStorage, no database. Nothing survives a Start Over.
+  The photo and its stylized version pass through the serverless function in-memory
+  per-request and are not stored anywhere.
 
 ## Data model
 
@@ -26,6 +33,12 @@ No persisted entities. In-memory only, per session:
   resolution — canvases render at the fixed processing size and are scaled
   up via CSS for display, independent of devicePixelRatio. Keeps memory
   bounded (~10MB worst case) regardless of screen density. — 2026-09-12
+- Photo is redrawn as black-and-white coloring-book line art via OpenAI
+  `gpt-image-1` (server-side, `api/stylize.js`) before our own line-art pipeline
+  runs on it, so that pipeline is a near-lossless binarization rather than
+  re-deriving lines from a colored image. If the stylize call fails for any
+  reason, the app falls back to running line-art extraction on the raw photo
+  rather than blocking — see DECISIONS.md. — 2026-09-12
 - DoG chosen over adaptive threshold as the default edge detector (see
   DECISIONS.md) but both are implemented behind a `method` switch in
   `lineArt.js` for ongoing comparison. — 2026-09-12
@@ -47,18 +60,30 @@ No persisted entities. In-memory only, per session:
 - iOS Safari specifics to keep validating: `capture="environment"` behavior,
   `createImageBitmap` EXIF orientation handling, viewport lock (no
   pinch-zoom/pull-to-refresh), and the PNG download → share sheet flow.
+- The app now requires a network round-trip (photo → `/api/stylize` → OpenAI
+  → back) between capture and seeing the line art. It is no longer usable
+  fully offline; the fallback path (raw photo → line art directly) only
+  covers the stylize call failing, not the rest of the app working offline.
+- `OPENAI_API_KEY` must be set in Vercel's project env vars for production
+  and in a local `.env.local` for `vercel dev`; without it `api/stylize.js`
+  returns a 500 and the client falls back to the un-stylized photo.
+- Cost scales with usage — trivial at toddler-app volume (~$0.02-0.07 per
+  photo), but not $0. Revisit if usage patterns change.
 
 ## Folder structure
 
 ```
+api/
+  stylize.js               # Vercel serverless function: photo -> OpenAI gpt-image-1 -> line-art PNG
 src/
   main.jsx
   App.jsx
   screens/
-    StartScreen.jsx       # Phase 1: photo input
+    StartScreen.jsx       # Phase 1: photo input + coloring-page stylization
     LineArtScreen.jsx     # Phase 1: line art display + DoG/adaptive debug toggle
   lib/
     imageLoad.js           # file -> downscaled ImageData
+    stylize.js              # client -> /api/stylize -> decoded line-art ImageData
     lineArt.js              # grayscale -> smoothing -> edges -> morphology -> speckle removal
   styles/
     index.css

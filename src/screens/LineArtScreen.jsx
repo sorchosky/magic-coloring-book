@@ -11,9 +11,12 @@ const toggleButtonStyle = (active) => ({
   color: active ? '#fff' : '#2b2b2b',
 });
 
-export default function LineArtScreen({ imageData, onStartOver }) {
+export default function LineArtScreen({ imageData, stylizeError, onStartOver }) {
   const canvasRef = useRef(null);
-  const [method, setMethod] = useState('dog');
+  // Threshold assumes solid cartoon-drawn outlines; if the stylize step
+  // failed and we're working from the raw photo instead, DoG (real edge
+  // detection) is the sane default.
+  const [method, setMethod] = useState(() => (stylizeError ? 'dog' : 'threshold'));
   const [processing, setProcessing] = useState(true);
   const [elapsedMs, setElapsedMs] = useState(null);
 
@@ -71,6 +74,23 @@ export default function LineArtScreen({ imageData, onStartOver }) {
         {processing && (
           <div style={{ position: 'absolute', fontSize: '1.2rem' }}>Converting…</div>
         )}
+        {!processing && stylizeError && (
+          <div
+            style={{
+              position: 'absolute',
+              bottom: 12,
+              left: 12,
+              right: 12,
+              background: '#2b2b2bcc',
+              color: '#fff',
+              borderRadius: 12,
+              padding: '10px 14px',
+              fontSize: '0.85rem',
+            }}
+          >
+            Cartoon step failed, using original photo: {stylizeError}
+          </div>
+        )}
       </div>
 
       <div
@@ -84,6 +104,13 @@ export default function LineArtScreen({ imageData, onStartOver }) {
         }}
       >
         <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            type="button"
+            style={toggleButtonStyle(method === 'threshold')}
+            onClick={() => setMethod('threshold')}
+          >
+            Threshold
+          </button>
           <button type="button" style={toggleButtonStyle(method === 'dog')} onClick={() => setMethod('dog')}>
             DoG
           </button>

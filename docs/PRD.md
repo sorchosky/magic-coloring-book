@@ -22,18 +22,26 @@ cycle to a new color) → tap through the whole page.
 ## Scope — this version
 
 1. Photo input (camera or library) + client-side downscale to 1024px longest edge.
-2. Line-art conversion: grayscale → noise smoothing → edge detection (DoG,
-   compared against adaptive threshold) → morphological closing → speckle
-   removal → boolean line mask.
-3. Region precomputation: connected-component labeling of non-line pixels,
-   average original-photo color per region boosted to a bright crayon color,
+2. Coloring-page stylization: the downscaled photo is sent to a Vercel
+   serverless function (`api/stylize.js`), which calls OpenAI's `gpt-image-1`
+   image-edit endpoint to redraw it as a finished black-and-white coloring
+   book page — monoline strokes of one even weight, pure white interiors,
+   fully closed shapes, minimal interior detail. Falls back to the raw photo
+   if this fails for any reason (no fail state).
+3. Line-art conversion: grayscale → noise smoothing → line detection
+   (darkness threshold by default; DoG/adaptive edge detection retained for
+   the raw-photo fallback path and comparison) → morphological closing →
+   speckle removal → boolean line mask. Runs on the stylized line art, not
+   the raw photo.
+4. Region precomputation: connected-component labeling of non-line pixels,
+   average cartoon-image color per region boosted to a bright crayon color,
    small regions merged into their largest neighbor.
-4. Tap-to-fill coloring: O(1) region lookup per tap, cycle color on repeat
+5. Tap-to-fill coloring: O(1) region lookup per tap, cycle color on repeat
    taps, fill animation + sound on every tap.
-5. Undo (single tap, reverts last fill), Start Over (1.5s long-press to
+6. Undo (single tap, reverts last fill), Start Over (1.5s long-press to
    avoid accidental resets), Save to Photos (composite + PNG download,
    opens iOS share sheet).
-6. Toddler-proof UX: icon-only controls, 88px+ touch targets in bottom
+7. Toddler-proof UX: icon-only controls, 88px+ touch targets in bottom
    corners, no modals/menus/text/fail states, locked viewport (no
    pinch-zoom, double-tap zoom, text selection, pull-to-refresh).
 
@@ -42,10 +50,11 @@ tap-to-fill + auto color) → Phase 3 (undo/start-over/save/sound/animation/poli
 
 ## Explicitly out of scope
 
-- Any backend, API keys, or network calls at runtime — 100% client-side.
 - Accounts, saved galleries, sharing beyond the OS share sheet.
 - Any drawing/freehand tool — tap-to-fill only.
 - Any settings, difficulty levels, or customization UI.
+- Any AI step beyond the one cartoon-stylization call per photo (no
+  multi-turn editing, no style picker, no retry-with-different-prompt UI).
 
 ## Success criteria
 
@@ -59,10 +68,15 @@ tap-to-fill + auto color) → Phase 3 (undo/start-over/save/sound/animation/poli
 
 ## Constraints
 
-- Budget for any paid API/service: $0 — no paid services, no API keys.
+- Budget for any paid API/service: OpenAI `gpt-image-1` for cartoon
+  stylization, ~$0.02-0.07/photo (low quality tier), approved 2026-09-12
+  after cost was surfaced — see DECISIONS.md. Nothing else paid.
 - Devices/browsers that matter: iPad and iPhone Safari (primary), desktop
   Chrome useful for development only.
 - Anything that must NOT change: none — greenfield project.
+- Requires `OPENAI_API_KEY` set in Vercel project env vars for production
+  and a local `.env.local` for dev (see `.env.local.example`) — never
+  committed.
 
 ## Open questions
 

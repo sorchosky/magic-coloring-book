@@ -1,10 +1,17 @@
 // Converts a photo's ImageData into a black-and-white line-art coloring page.
 //
-// Pipeline: grayscale -> median smoothing -> edge detection (DoG or adaptive
-// threshold, switchable for comparison) -> morphological closing (seals gaps
-// so flood fill can't leak) -> speckle removal -> boolean line mask.
+// Pipeline: grayscale -> median smoothing -> line detection (darkness
+// threshold by default, or DoG/adaptive edge detection for comparison) ->
+// morphological closing (seals gaps so flood fill can't leak) -> speckle
+// removal -> boolean line mask.
 //
-// Tune these against real photos of people, pets, and toys.
+// Darkness threshold is the default because input is now already
+// black-and-white coloring-book line art (see lib/stylize.js), so this pass
+// is essentially a binarization that marks each drawn stroke solid.
+// DoG/adaptive are edge detectors: they find the two boundaries of a stroke,
+// not its solid interior, which produces a hollow double-line "tube" outline
+// on drawn input. Keep DoG/adaptive around for the raw-photo fallback path
+// (stylize call failed) and for comparison.
 export const LINE_ART_PARAMS = {
   // Median filter radius (in px) applied to grayscale before edge detection.
   // This is the #1 defense against photo noise / skin texture producing
@@ -21,6 +28,14 @@ export const LINE_ART_PARAMS = {
   // when it deviates from its local neighborhood average by more than C.
   ADAPTIVE_BLOCK_RADIUS: 7,
   ADAPTIVE_C: 6,
+
+  // Darkness threshold: for cartoon-stylized input (already has solid drawn
+  // outlines, not photo edges), just mark pixels darker than this luma value
+  // as line pixels directly. Unlike DoG/adaptive, this fills the whole
+  // outline stroke solid instead of tracing its two boundary edges — DoG on
+  // a thick drawn line produces a hollow double-line "tube" since it only
+  // detects the two intensity transitions, not the solid interior.
+  DARKNESS_THRESHOLD: 96,
 
   // Morphological closing (dilate then erode) on the edge mask, to seal
   // small gaps in outlines. CRITICAL: open contours leak flood fill across
@@ -160,6 +175,14 @@ function adaptiveEdges(gray, width, height, { blockRadius, c }) {
   return mask;
 }
 
+function darknessThreshold(gray, width, height, { threshold }) {
+  const mask = new Uint8Array(width * height);
+  for (let i = 0; i < mask.length; i++) {
+    mask[i] = gray[i] < threshold ? 1 : 0;
+  }
+  return mask;
+}
+
 // Square structuring element dilation/erosion (radius 1 = 3x3 neighborhood).
 function dilate(mask, width, height, radius) {
   if (radius <= 0) return mask;
@@ -263,25 +286,29 @@ function removeSpeckle(mask, width, height, minArea) {
 
 /**
  * @param {ImageData} imageData
- * @param {{ method?: 'dog' | 'adaptive', params?: typeof LINE_ART_PARAMS }} options
+ * @param {{ method?: 'dog' | 'adaptive' | 'threshold', params?: typeof LINE_ART_PARAMS }} options
  * @returns {{ lineMask: Uint8Array, width: number, height: number }}
  */
-export function generateLineArt(imageData, { method = 'dog', params = LINE_ART_PARAMS } = {}) {
+export function generateLineArt(imageData, { method = 'threshold', params = LINE_ART_PARAMS } = {}) {
   const { width, height } = imageData;
   const gray = toGrayscale(imageData);
   const smoothed = medianFilter(gray, width, height, params.MEDIAN_RADIUS);
 
-  const edges =
-    method === 'adaptive'
-      ? adaptiveEdges(smoothed, width, height, {
-          blockRadius: params.ADAPTIVE_BLOCK_RADIUS,
-          c: params.ADAPTIVE_C,
-        })
-      : dogEdges(smoothed, width, height, {
-          sigma1: params.DOG_SIGMA_1,
-          sigma2: params.DOG_SIGMA_2,
-          threshold: params.DOG_THRESHOLD,
-        });
+  let edges;
+  if (method === 'adaptive') {
+    edges = adaptiveEdges(smoothed, width, height, {
+      blockRadius: params.ADAPTIVE_BLOCK_RADIUS,
+      c: params.ADAPTIVE_C,
+    });
+  } else if (method === 'threshold') {
+    edges = darknessThreshold(smoothed, width, height, { threshold: params.DARKNESS_THRESHOLD });
+  } else {
+    edges = dogEdges(smoothed, width, height, {
+      sigma1: params.DOG_SIGMA_1,
+      sigma2: params.DOG_SIGMA_2,
+      threshold: params.DOG_THRESHOLD,
+    });
+  }
 
   const closed = morphClose(edges, width, height, params.MORPH_DILATE_RADIUS, params.MORPH_ERODE_RADIUS);
   const lineMask = removeSpeckle(closed, width, height, params.MIN_SPECKLE_AREA);

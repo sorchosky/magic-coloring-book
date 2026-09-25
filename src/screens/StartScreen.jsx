@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { loadDownscaledImage } from '../lib/imageLoad.js';
+import { stylizeToCartoon } from '../lib/stylize.js';
 
 const buttonStyle = {
   flex: 1,
@@ -18,6 +19,7 @@ const buttonStyle = {
 
 export default function StartScreen({ onPhotoReady }) {
   const [busy, setBusy] = useState(false);
+  const [stage, setStage] = useState(null); // 'loading' | 'stylizing' | null
   const cameraInputRef = useRef(null);
   const libraryInputRef = useRef(null);
 
@@ -26,11 +28,27 @@ export default function StartScreen({ onPhotoReady }) {
     e.target.value = '';
     if (!file) return;
     setBusy(true);
+    setStage('loading');
     try {
       const { imageData } = await loadDownscaledImage(file);
-      onPhotoReady(imageData);
+
+      setStage('stylizing');
+      let cartoonImageData = imageData;
+      let stylizeError = null;
+      try {
+        cartoonImageData = await stylizeToCartoon(imageData);
+      } catch (err) {
+        // No API key configured, offline, quota hit, etc. — fall back to
+        // the raw photo rather than blocking the coloring flow, but surface
+        // it so a silent fallback isn't mistaken for a working cartoon step.
+        stylizeError = err instanceof Error ? err.message : String(err);
+        console.warn('Cartoon stylize failed, using original photo:', err);
+      }
+
+      onPhotoReady(cartoonImageData, stylizeError);
     } finally {
       setBusy(false);
+      setStage(null);
     }
   }
 
@@ -71,7 +89,9 @@ export default function StartScreen({ onPhotoReady }) {
       </div>
 
       {busy && (
-        <div style={{ textAlign: 'center', fontSize: '1.2rem' }}>Loading photo…</div>
+        <div style={{ textAlign: 'center', fontSize: '1.2rem' }}>
+          {stage === 'stylizing' ? 'Cartoonifying…' : 'Loading photo…'}
+        </div>
       )}
 
       <input
